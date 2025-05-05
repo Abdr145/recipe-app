@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>{{ 'Edit' if form.title.data else 'New' }} Recipe</h2>
+  <form method="POST" enctype="multipart/form-data">
+    {{ form.hidden_tag() }}
+    <div class="mb-3">{{ form.title.label }} {{ form.title(class="form-control") }}</div>
+    <div class="mb-3">{{ form.description.label }} {{ form.description(class="form-control") }}</div>
+    <div class="mb-3">{{ form.instructions.label }} {{ form.instructions(class="form-control") }}</div>
+    <div class="mb-3">{{ form.ingredients.label }} {{ form.ingredients(class="form-control") }}</div>
+    <div class="mb-3">{{ form.categories.label }} {{ form.categories(class="form-control") }}</div>
+    <div class="mb-3">{{ form.image.label }} {{ form.image(class="form-control") }}</div>
+    {{ form.submit(class="btn btn-primary") }}
+  </form>
+{% endblock %}

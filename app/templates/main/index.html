@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>Latest Recipes</h2>
+  <form method="GET" class="mb-3">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search..." class="form-control">
+  </form>
+  <div class="list-group">
+    {% for r in recipes %}
+      <a href="{{ url_for('recipes.recipe_detail', recipe_id=r.id) }}" class="list-group-item">{{ r.title }}</a>
+    {% endfor %}
+  </div>
+{% endblock %}
