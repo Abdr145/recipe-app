@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+{% block title %}FlavorFind - AI Recipe Discovery{% endblock %}
+
+{% block content %}
+<div class="row">
+  <!-- Hero Section -->
+  <div class="col-12 mb-5">
+    <div class="text-center">
+      <h1 class="display-4 mb-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+        Discover Your Next Favorite Recipe
+      </h1>
+      <p class="lead text-muted mb-4">Use AI to find perfect recipes based on ingredients you have at home</p>
+
+      <!-- Quick Action Buttons -->
+      <div class="d-flex gap-3 justify-content-center flex-wrap mt-4">
+        <button class="btn btn-primary btn-lg" onclick="toggleIngredientSearch()">
+          <i class="fas fa-robot me-2"></i>What Can I Cook?
+        </button>
+        <button class="btn btn-success btn-lg" onclick="toggleRegularSearch()">
+          <i class="fas fa-search me-2"></i>Search Recipes
+        </button>
+        {% if current_user.is_authenticated %}
+        <a href="{{ url_for('recipes.new_recipe') }}" class="btn btn-warning btn-lg">
+          <i class="fas fa-plus me-2"></i>Add Recipe
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AI-Powered Ingredient Search (Initially Hidden) -->
+<div class="row mb-5" id="ingredient-search-section" style="display: none;">
+  <div class="col-12">
+    <div class="ai-feature">
+      <i class="fas fa-robot"></i>
+      <h3>AI-Powered Recipe Finder</h3>
+      <p class="mb-4">Tell us what ingredients you have, and our AI will suggest the perfect recipes for you!</p>
+
+      <form method="POST" class="row g-3 justify-content-center">
+        {{ search_form.hidden_tag() }}
+        <div class="col-md-8">
+          {{ search_form.ingredients(class="form-control form-control-lg", style="background: rgba(255,255,255,0.9); border: 2px solid rgba(255,255,255,0.5);", id="ingredients-input") }}
+        </div>
+        <div class="col-md-4">
+          {{ search_form.submit(class="btn btn-light btn-lg w-100", style="font-weight: 600;") }}
+        </div>
+      </form>
+
+      <!-- Quick Ingredient Suggestions -->
+      <div class="mt-4">
+        <p class="text-white-50 mb-2">Quick suggestions:</p>
+        <div class="d-flex flex-wrap gap-2 justify-content-center">
+          <span class="ingredient-suggestion" onclick="addIngredient('chicken, rice, onion')">🍗 Chicken & Rice</span>
+          <span class="ingredient-suggestion" onclick="addIngredient('pasta, tomato, cheese')">🍝 Pasta Special</span>
+          <span class="ingredient-suggestion" onclick="addIngredient('beef, potato, carrot')">🥩 Hearty Meal</span>
+          <span class="ingredient-suggestion" onclick="addIngredient('fish, lemon, herbs')">🐟 Fresh Fish</span>
+          <span class="ingredient-suggestion" onclick="addIngredient('eggs, milk, flour')">🥞 Breakfast</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Regular Search (Initially Hidden) -->
+<div class="row mb-4" id="regular-search-section" style="display: none;">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">
+          <i class="fas fa-search me-2 text-primary"></i>Search Recipes by Name
+        </h5>
+        <form method="GET" class="d-flex">
+          <input type="text" name="q" value="{{ query }}"
+                 placeholder="Search by recipe name..."
+                 class="form-control me-2">
+          <button class="btn btn-primary" type="submit">
+            <i class="fas fa-search"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mb-4">
+  <div class="col-md-4">
+    <div class="card text-center">
+      <div class="card-body">
+        <i class="fas fa-book-open fa-2x text-primary mb-3"></i>
+        <h4>{{ recipes|length }}</h4>
+        <p class="text-muted mb-0">Available Recipes</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center">
+      <div class="card-body">
+        <i class="fas fa-robot fa-2x text-success mb-3"></i>
+        <h4>AI Powered</h4>
+        <p class="text-muted mb-0">Smart Matching</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center">
+      <div class="card-body">
+        <i class="fas fa-users fa-2x text-warning mb-3"></i>
+        <h4>Community</h4>
+        <p class="text-muted mb-0">Driven Recipes</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recipes Section -->
+<div class="row">
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="mb-0">
+        {% if query %}
+          <i class="fas fa-search me-2 text-primary"></i>Search Results for "{{ query }}"
+        {% else %}
+          <i class="fas fa-star me-2 text-warning"></i>Latest Recipes
+        {% endif %}
+      </h2>
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('recipes.new_recipe') }}" class="btn btn-success">
+          <i class="fas fa-plus me-1"></i>Add New Recipe
+        </a>
+      {% endif %}
+    </div>
+
+    {% if recipes %}
+      <div class="recipe-grid">
+        {% for recipe in recipes %}
+          <div class="card recipe-card-item" onclick="location.href='{{ url_for('recipes.recipe_detail', recipe_id=recipe.id) }}'">
+            {% if recipe.image_file %}
+              <div class="recipe-card-bg" style="background-image: url('{{ url_for('static', filename='uploads/' ~ recipe.image_file) }}');"></div>
+            {% else %}
+              <div class="recipe-card-bg" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+            {% endif %}
+
+            <div class="card-img-overlay d-flex flex-column justify-content-end">
+              <h5 class="card-title text-white mb-2">{{ recipe.title }}</h5>
+              <p class="card-text text-white-50 mb-2">{{ recipe.description[:100] }}...</p>
+              <div class="d-flex justify-content-between align-items-center">
+                <small class="text-white-50">
+                  <i class="fas fa-user me-1"></i>{{ recipe.author.username }}
+                </small>
+                <small class="text-white-50">
+                  <i class="fas fa-calendar me-1"></i>{{ recipe.date_posted.strftime('%b %d') }}
+                </small>
+              </div>
+
+              {% if recipe.categories %}
+                <div class="mt-2">
+                  {% for category in recipe.categories[:3] %}
+                    <span class="ingredient-tag">{{ category.name }}</span>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-center py-5">
+        <div class="card">
+          <div class="card-body py-5">
+            <i class="fas fa-utensils-slash fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">No recipes found</h4>
+            <p class="text-muted mb-4">
+              {% if query %}
+                No recipes match your search "{{ query }}". Try a different search term.
+              {% else %}
+                No recipes have been added yet. Be the first to share a recipe!
+              {% endif %}
+            </p>
+            {% if current_user.is_authenticated %}
+              <a href="{{ url_for('recipes.new_recipe') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>Add First Recipe
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.ingredient-suggestion {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+
+.ingredient-suggestion:hover {
+  background: rgba(255,255,255,0.3);
+  transform: translateY(-2px);
+}
+
+.recipe-card-item {
+  cursor: pointer;
+  height: 300px;
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.recipe-card-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+}
+
+.recipe-card-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  transition: transform 0.3s ease;
+}
+
+.recipe-card-item:hover .recipe-card-bg {
+  transform: scale(1.05);
+}
+</style>
+
+<script>
+function toggleIngredientSearch() {
+  const section = document.getElementById('ingredient-search-section');
+  const regularSection = document.getElementById('regular-search-section');
+
+  if (section.style.display === 'none') {
+    section.style.display = 'block';
+    regularSection.style.display = 'none';
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Focus on input after animation
+    setTimeout(() => {
+      document.getElementById('ingredients-input').focus();
+    }, 500);
+  } else {
+    section.style.display = 'none';
+  }
+}
+
+function toggleRegularSearch() {
+  const section = document.getElementById('regular-search-section');
+  const ingredientSection = document.getElementById('ingredient-search-section');
+
+  if (section.style.display === 'none') {
+    section.style.display = 'block';
+    ingredientSection.style.display = 'none';
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    section.style.display = 'none';
+  }
+}
+
+function addIngredient(ingredients) {
+  const input = document.getElementById('ingredients-input');
+  input.value = ingredients;
+  input.focus();
+}
+
+// Show ingredient search by default if no query
+{% if not query %}
+document.addEventListener('DOMContentLoaded', function() {
+  // Can optionally show ingredient search by default
+  // toggleIngredientSearch();
+});
+{% endif %}
+</script>
+
+{% endblock %}

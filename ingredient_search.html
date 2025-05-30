@@ -1,0 +1,360 @@
+{% extends 'base.html' %}
+{% block title %}AI Recipe Suggestions - FlavorFind{% endblock %}
+
+{% block content %}
+<div class="row">
+  <!-- Header Section -->
+  <div class="col-12 mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h1 class="mb-2">
+          <i class="fas fa-robot me-2 text-primary"></i>AI Recipe Suggestions
+        </h1>
+        <p class="text-muted mb-0">Based on your available ingredients</p>
+      </div>
+      <a href="{{ url_for('main.index') }}" class="btn btn-outline-primary">
+        <i class="fas fa-arrow-left me-1"></i>Back to Search
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Your Ingredients Section -->
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">
+          <i class="fas fa-shopping-basket me-2 text-success"></i>Your Available Ingredients
+        </h5>
+        <div class="d-flex flex-wrap gap-2">
+          {% for ingredient in ingredients %}
+            <span class="ingredient-tag available">
+              <i class="fas fa-check me-1"></i>{{ ingredient }}
+            </span>
+          {% endfor %}
+        </div>
+
+        <!-- New Search Button -->
+        <div class="mt-3">
+          <button class="btn btn-sm btn-outline-primary" onclick="toggleNewSearch()">
+            <i class="fas fa-edit me-1"></i>Try Different Ingredients
+          </button>
+        </div>
+
+        <!-- New Search Form (Hidden by default) -->
+        <div id="new-search-form" class="mt-3" style="display: none;">
+          <form method="GET" action="{{ url_for('main.ingredient_search') }}">
+            <div class="input-group">
+              <input type="text" name="ingredients" class="form-control"
+                     placeholder="Enter new ingredients (comma-separated)"
+                     value="{{ ', '.join(ingredients) }}">
+              <button class="btn btn-primary" type="submit">
+                <i class="fas fa-search me-1"></i>Search Again
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Results Section -->
+<div class="row">
+  <div class="col-12">
+    {% if suggested_recipes %}
+      <!-- Results Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">
+          <i class="fas fa-magic me-2 text-warning"></i>
+          Found {{ suggested_recipes|length }} Perfect Matches
+        </h3>
+        <div class="btn-group" role="group">
+          <button class="btn btn-sm btn-outline-secondary" onclick="sortRecipes('similarity')">
+            <i class="fas fa-sort-amount-down me-1"></i>By Match Score
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="sortRecipes('missing')">
+            <i class="fas fa-list me-1"></i>By Missing Ingredients
+          </button>
+        </div>
+      </div>
+
+      <!-- Recipe Cards -->
+      <div class="row" id="recipe-results">
+        {% for recipe in suggested_recipes %}
+          <div class="col-lg-6 col-xl-4 mb-4 recipe-item"
+               data-similarity="{{ recipe.similarity_score }}"
+               data-missing="{{ recipe.missing_ingredients|length }}">
+            <div class="card h-100 recipe-suggestion-card">
+              <!-- Recipe Image -->
+              <div class="recipe-image-container position-relative">
+                {% if recipe.image_file %}
+                  <img src="{{ url_for('static', filename='uploads/' ~ recipe.image_file) }}"
+                       class="card-img-top recipe-image" alt="{{ recipe.title }}">
+                {% else %}
+                  <div class="card-img-top recipe-image-placeholder d-flex align-items-center justify-content-center">
+                    <i class="fas fa-utensils fa-3x text-muted"></i>
+                  </div>
+                {% endif %}
+
+                <!-- Match Score Badge -->
+                <div class="position-absolute top-0 end-0 m-2">
+                  <span class="badge match-score-badge">
+                    {{ "%.0f"|format(recipe.similarity_score * 100) }}% Match
+                  </span>
+                </div>
+              </div>
+
+              <div class="card-body d-flex flex-column">
+                <!-- Recipe Title & Description -->
+                <h5 class="card-title">{{ recipe.title }}</h5>
+                <p class="card-text text-muted flex-grow-1">{{ recipe.description[:120] }}...</p>
+
+                <!-- Matching Ingredients -->
+                {% if recipe.matching_ingredients %}
+                  <div class="mb-3">
+                    <h6 class="text-success mb-2">
+                      <i class="fas fa-check-circle me-1"></i>
+                      You have ({{ recipe.matching_ingredients|length }}):
+                    </h6>
+                    <div class="d-flex flex-wrap gap-1">
+                      {% for ingredient in recipe.matching_ingredients[:6] %}
+                        <span class="ingredient-tag available small">{{ ingredient }}</span>
+                      {% endfor %}
+                      {% if recipe.matching_ingredients|length > 6 %}
+                        <span class="ingredient-tag available small">+{{ recipe.matching_ingredients|length - 6 }} more</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endif %}
+
+                <!-- Missing Ingredients -->
+                {% if recipe.missing_ingredients %}
+                  <div class="mb-3">
+                    <h6 class="text-warning mb-2">
+                      <i class="fas fa-shopping-cart me-1"></i>
+                      You need ({{ recipe.missing_ingredients|length }}):
+                    </h6>
+                    <div class="d-flex flex-wrap gap-1">
+                      {% for ingredient in recipe.missing_ingredients[:4] %}
+                        <span class="ingredient-tag missing small">{{ ingredient }}</span>
+                      {% endfor %}
+                      {% if recipe.missing_ingredients|length > 4 %}
+                        <span class="ingredient-tag missing small">+{{ recipe.missing_ingredients|length - 4 }} more</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endif %}
+
+                <!-- Recipe Meta -->
+                <div class="d-flex justify-content-between align-items-center text-muted small mb-3">
+                  <span>
+                    <i class="fas fa-user me-1"></i>{{ recipe.author }}
+                  </span>
+                  <span>
+                    <i class="fas fa-tags me-1"></i>
+                    {% if recipe.categories %}
+                      {{ recipe.categories|join(', ') }}
+                    {% else %}
+                      General
+                    {% endif %}
+                  </span>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-grid gap-2">
+                  <a href="{{ url_for('recipes.recipe_detail', recipe_id=recipe.id) }}"
+                     class="btn btn-primary">
+                    <i class="fas fa-eye me-1"></i>View Recipe
+                  </a>
+                  {% if recipe.missing_ingredients|length == 0 %}
+                    <div class="alert alert-success alert-sm mb-0 py-2">
+                      <i class="fas fa-star me-1"></i>Perfect Match - Ready to Cook!
+                    </div>
+                  {% elif recipe.missing_ingredients|length <= 2 %}
+                    <div class="alert alert-warning alert-sm mb-0 py-2">
+                      <i class="fas fa-shopping-cart me-1"></i>Almost Ready - Just {{ recipe.missing_ingredients|length }} ingredient{{ 's' if recipe.missing_ingredients|length > 1 else '' }} needed
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+
+    {% else %}
+      <!-- No Results -->
+      <div class="text-center py-5">
+        <div class="card">
+          <div class="card-body py-5">
+            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">No Matching Recipes Found</h4>
+            <p class="text-muted mb-4">
+              We couldn't find any recipes that match your ingredients:
+              <strong>{{ ', '.join(ingredients) }}</strong>
+            </p>
+            <div class="d-flex gap-2 justify-content-center flex-wrap">
+              <button class="btn btn-primary" onclick="toggleNewSearch()">
+                <i class="fas fa-edit me-1"></i>Try Different Ingredients
+              </button>
+              {% if current_user.is_authenticated %}
+                <a href="{{ url_for('recipes.new_recipe') }}" class="btn btn-success">
+                  <i class="fas fa-plus me-1"></i>Add a Recipe with These Ingredients
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Tips Section -->
+<div class="row mt-5">
+  <div class="col-12">
+    <div class="card bg-light">
+      <div class="card-body">
+        <h5 class="card-title">
+          <i class="fas fa-lightbulb me-2 text-warning"></i>Pro Tips for Better Results
+        </h5>
+        <div class="row">
+          <div class="col-md-4">
+            <h6><i class="fas fa-search-plus me-1 text-primary"></i>Be Specific</h6>
+            <p class="small text-muted">Use specific ingredient names like "chicken breast" instead of just "chicken"</p>
+          </div>
+          <div class="col-md-4">
+            <h6><i class="fas fa-list me-1 text-success"></i>List Main Items</h6>
+            <p class="small text-muted">Include your main proteins, vegetables, and grains for better matches</p>
+          </div>
+          <div class="col-md-4">
+            <h6><i class="fas fa-plus me-1 text-info"></i>Don't Worry About Basics</h6>
+            <p class="small text-muted">You don't need to include salt, pepper, oil - we assume you have basics</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.recipe-suggestion-card {
+  transition: all 0.3s ease;
+  border: none;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.recipe-suggestion-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+}
+
+.recipe-image-container {
+  height: 200px;
+  overflow: hidden;
+}
+
+.recipe-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.recipe-image-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.recipe-suggestion-card:hover .recipe-image {
+  transform: scale(1.05);
+}
+
+.match-score-badge {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+}
+
+.ingredient-tag.small {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.6rem;
+}
+
+.alert-sm {
+  font-size: 0.85rem;
+}
+
+.recipe-item {
+  transition: all 0.3s ease;
+}
+</style>
+
+<script>
+function toggleNewSearch() {
+  const form = document.getElementById('new-search-form');
+  if (form.style.display === 'none') {
+    form.style.display = 'block';
+    form.querySelector('input').focus();
+  } else {
+    form.style.display = 'none';
+  }
+}
+
+function sortRecipes(type) {
+  const container = document.getElementById('recipe-results');
+  const items = Array.from(container.children);
+
+  items.sort((a, b) => {
+    if (type === 'similarity') {
+      return parseFloat(b.dataset.similarity) - parseFloat(a.dataset.similarity);
+    } else if (type === 'missing') {
+      return parseInt(a.dataset.missing) - parseInt(b.dataset.missing);
+    }
+  });
+
+  // Clear and re-append sorted items
+  container.innerHTML = '';
+  items.forEach(item => container.appendChild(item));
+
+  // Add animation
+  items.forEach((item, index) => {
+    item.style.opacity = '0';
+    item.style.transform = 'translateY(20px)';
+    setTimeout(() => {
+      item.style.transition = 'all 0.3s ease';
+      item.style.opacity = '1';
+      item.style.transform = 'translateY(0)';
+    }, index * 50);
+  });
+}
+
+// Add smooth scroll animations
+document.addEventListener('DOMContentLoaded', function() {
+  const cards = document.querySelectorAll('.recipe-suggestion-card');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.opacity = '1';
+        entry.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.1 });
+
+  cards.forEach((card, index) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(30px)';
+    card.style.transition = `all 0.6s ease ${index * 0.1}s`;
+    observer.observe(card);
+  });
+});
+</script>
+
+{% endblock %}
